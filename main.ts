@@ -1,8 +1,14 @@
 import { Bot } from "https://deno.land/x/telegram/mod.ts";
 import { Update, User } from "https://deno.land/x/telegram/types.ts";
+import { readJson } from "https://deno.land/std/fs/mod.ts";
+
+type Filter = {
+  filteredWords: Array<string>;
+};
 
 const token: string | undefined = Deno.env.get("TOKEN");
 const chatId: string | undefined = Deno.env.get("CHAT_ID");
+const filter: Filter = await readJson("./filter.json");
 
 if (typeof token === "undefined" || typeof chatId === "undefined") {
   throw new Error(
@@ -23,10 +29,14 @@ bot.telegram.getUpdates({
       return;
     }
     update.message.new_chat_members.forEach((user: User) => {
-      bot.telegram.kickChatMember({
-        chat_id: chatId,
-        user_id: user.id,
-        until_date: (+new Date()),
+      filter.filteredWords.forEach((filteredWord) => {
+        if (user.username?.includes(filteredWord)) {
+          bot.telegram.kickChatMember({
+            chat_id: chatId,
+            user_id: user.id,
+            until_date: (+new Date()),
+          });
+        }
       });
     });
   });

@@ -6,5 +6,5 @@ ENV TOKEN=abc \
 WORKDIR /app
 COPY . /app
 
-ENTRYPOINT [ "deno", "run", "--allow-env", "--allow-net", "--allow-read", "main.ts" ]
+ENTRYPOINT [ "deno", "run", "--allow-env", "--allow-net", "--allow-read", "--unstable", "main.ts" ]
 

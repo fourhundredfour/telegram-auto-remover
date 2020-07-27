@@ -1,14 +1,13 @@
-import { Bot } from "https://deno.land/x/telegram/mod.ts";
-import { Update, User } from "https://deno.land/x/telegram/types.ts";
-import { readJson } from "https://deno.land/std/fs/mod.ts";
-
-type Filter = {
-  filteredWords: Array<string>;
-};
+import {
+  TelegramBot,
+  UpdateType,
+} from "https://deno.land/x/telegram_bot_api/mod.ts";
 
 const token: string | undefined = Deno.env.get("TOKEN");
 const chatId: string | undefined = Deno.env.get("CHAT_ID");
-const filter: Filter = await readJson("./filter.json");
+const filter = JSON.parse(
+  new TextDecoder("utf-8").decode(await Deno.readFile("./filter.json")),
+);
 
 if (typeof token === "undefined" || typeof chatId === "undefined") {
   throw new Error(
@@ -16,28 +15,28 @@ if (typeof token === "undefined" || typeof chatId === "undefined") {
   );
 }
 
-const bot: Bot = new Bot(token);
+const bot: TelegramBot = new TelegramBot(token);
+bot.run({
+  polling: {
+    timeout: 30,
+  },
+});
 
-bot.telegram.getUpdates({
-  offset: 1,
-  limit: 100,
-  timeout: 0,
-  allowedUpdates: ["message"],
-}).then((updates: Update[]) => {
-  updates.forEach((update: Update) => {
-    if (!update.message?.new_chat_members) {
-      return;
-    }
-    update.message.new_chat_members.forEach((user: User) => {
-      filter.filteredWords.forEach((filteredWord) => {
-        if (user.username?.includes(filteredWord)) {
-          bot.telegram.kickChatMember({
-            chat_id: chatId,
-            user_id: user.id,
-            until_date: (+new Date()),
-          });
-        }
-      });
+bot.on(UpdateType.Message, async ({ message }) => {
+  if (message.chat.id !== Number(chatId) || !message.new_chat_members) {
+    return;
+  }
+  message.new_chat_members.forEach((user) => {
+    filter.filteredWords.forEach((filteredWord: string) => {
+      if (user.username?.includes(filteredWord)) {
+        console.log(`User ${user.username} (${user.id}) was kicked.`);
+        bot.kickChatMember({
+          chat_id: chatId,
+          user_id: user.id,
+        });
+      }
     });
   });
 });
+
+console.log("Bot is ready to kick.");
